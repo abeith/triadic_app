@@ -1,0 +1,756 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:root {
+  --bg: #f6f2ea;
+  --bg-ink: #1a2430;
+  --accent: #f45b69;
+  --accent-ink: #2a3b4f;
+  --card: #ffffff;
+  --shadow: 0 18px 40px rgba(25, 32, 38, 0.18);
+  --annotations-height: 20%;
+  --triad-gap: clamp(18px, 2.6vw, 32px);
+  --triad-max-width: 1400px;
+  --triad-pad: clamp(16px, 3vw, 40px);
+  --image-radius: 16px;
+  --image-border: 2px;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--bg-ink);
+  font-family: "Avenir Next", "Futura", "Gill Sans", "Trebuchet MS", sans-serif;
+  background:
+    radial-gradient(circle at 20% 20%, #fff8f0 0%, transparent 45%),
+    radial-gradient(circle at 85% 30%, #fcebdc 0%, transparent 50%),
+    linear-gradient(160deg, #f6f2ea 0%, #f5efe6 100%);
+}
+
+.content {
+  min-height: 100vh;
+}
+
+.view {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.triad-view .triad-stage,
+.triad-annotations-view .triad-stage {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--triad-pad);
+  overflow: hidden;
+  min-height: 0;
+}
+
+.triad-grid {
+  width: min(96vw, var(--triad-max-width));
+  height: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--triad-gap);
+  align-items: center;
+  min-height: 0;
+}
+
+.triad-left {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--triad-gap);
+  height: 100%;
+  min-height: 0;
+  justify-items: stretch;
+}
+
+.triad-right {
+  display: flex;
+  align-items: center;
+  /* justify-content: stretch; */
+  height: 100%;
+  min-height: 0;
+}
+
+.triad-slot {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.triad-left .triad-slot {
+    justify-content: end;
+}
+
+.triad-right .triad-slot {
+    justify-content: start;
+}
+
+
+.triad-card {
+  position: relative;
+  border-radius: var(--image-radius);
+  overflow: hidden;
+  background: var(--card);
+  box-shadow: var(--shadow);
+  border: var(--image-border) solid rgba(26, 36, 48, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  width: auto;
+  box-sizing: content-box;
+}
+
+.triad-card img {
+    max-width: 100%;
+    width: auto;
+    height: auto;
+    max-height: 100%;
+  /* height: 50%; */
+  /* object-fit: contain; */
+  display: block;
+}
+
+.triad-left .triad-card {
+    height: 100%;
+    /* width: auto; */
+  /* max-height: 100%; */
+}
+
+/* .triad-left .triad-card img { */
+/*   height: auto; */
+/*   max-height: 100%; */
+/*     /\* width: auto; *\/ */
+/*     /\* max-width: 100%; *\/ */
+/*     /\* object-fit: contain; *\/ */
+/* } */
+
+.triad-right .triad-card {
+    /* height: 50%; */
+    /* Twice as much available height on the right compared to left */
+    height: 50%;
+}
+
+/* .triad-right .triad-card img { */
+/*     height: auto; */
+/*     max-height: 100%; */
+/*   /\* width: auto; *\/ */
+/* } */
+
+
+.triad-label {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--bg-ink);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  font-size: clamp(16px, 2.2vw, 22px);
+  text-transform: uppercase;
+}
+
+.annotation-tag {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--bg-ink);
+  box-shadow: 0 8px 16px rgba(26, 36, 48, 0.12);
+  display: none;
+}
+
+.annotation-tag.is-visible {
+  display: inline-flex;
+}
+
+.triad-card.is-pair {
+  border: 6px solid rgba(244, 91, 105, 0.9);
+  box-shadow: 0 18px 36px rgba(244, 91, 105, 0.28),
+    inset 0 0 0 2px rgba(244, 91, 105, 0.4);
+}
+
+.triad-card.is-odd {
+  border: 6px solid rgba(42, 59, 79, 0.9);
+  box-shadow: 0 18px 36px rgba(42, 59, 79, 0.28),
+    inset 0 0 0 2px rgba(42, 59, 79, 0.4);
+}
+
+.image-missing {
+  height: 100%;
+  width: 100%;
+  display: grid;
+  place-items: center;
+  color: rgba(26, 36, 48, 0.6);
+  font-weight: 600;
+  font-size: 16px;
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(26, 36, 48, 0.05),
+    rgba(26, 36, 48, 0.05) 12px,
+    rgba(26, 36, 48, 0.1) 12px,
+    rgba(26, 36, 48, 0.1) 24px
+  );
+}
+
+.triad-annotations-view {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) var(--annotations-height);
+  min-height: 0;
+}
+
+.annotations-panel {
+  border-top: 1px solid rgba(26, 36, 48, 0.1);
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(6px);
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+}
+
+.triad-form {
+  padding: 12px 18px;
+  background: rgba(255, 255, 255, 0.75);
+  border-bottom: 1px solid rgba(26, 36, 48, 0.1);
+}
+
+.triad-form-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.triad-form label {
+  display: flex;
+  flex-direction: column;
+  font-weight: 700;
+  font-size: 13px;
+  gap: 4px;
+}
+
+.triad-form input {
+  width: 100px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(26, 36, 48, 0.2);
+}
+
+.triad-form button {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.form-error {
+  color: #c23b31;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.annotations-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.annotation-list {
+  display: flex;
+  gap: clamp(12px, 2vw, 24px);
+  justify-content: center;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-x: auto;
+  flex: 1;
+}
+
+.annotation-item {
+  min-width: 130px;
+  padding: 12px;
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid rgba(26, 36, 48, 0.12);
+  box-shadow: 0 12px 24px rgba(26, 36, 48, 0.12);
+  cursor: pointer;
+  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+}
+
+.annotation-item:hover {
+  box-shadow: 0 16px 32px rgba(26, 36, 48, 0.16);
+  border-color: rgba(26, 36, 48, 0.2);
+}
+
+.annotation-item.is-active {
+  border-color: var(--accent);
+  box-shadow: 0 20px 36px rgba(244, 91, 105, 0.24);
+}
+
+.annotation-diagram {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  background: #f9f7f4;
+  border-radius: 12px;
+  border: 1px dashed rgba(26, 36, 48, 0.18);
+  overflow: hidden;
+}
+
+.annotation-diagram .diag-sq {
+  position: absolute;
+  width: 30%;
+  height: 30%;
+  border-radius: 6px;
+  background: #999;
+  z-index: 1;
+}
+
+.annotation-diagram .pos-a { top: 16%; left: 16%; }
+.annotation-diagram .pos-b { top: 35%; left: 54%; }
+.annotation-diagram .pos-c { top: 54%; left: 16%; }
+
+.annotation-diagram .is-pair { background: var(--accent); }
+.annotation-diagram .is-odd { background: var(--accent-ink); }
+
+.annotation-empty {
+  padding: 12px 0;
+  color: rgba(26, 36, 48, 0.6);
+  font-weight: 600;
+}
+
+.combo-actions {
+  flex: 0 0 auto;
+}
+
+.combo-next {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  :root {
+    --annotations-height: 26%;
+    --triad-pad: 16px;
+  }
+
+  .triad-grid {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .triad-left {
+    grid-template-rows: auto auto;
+  }
+
+  .triad-right {
+    order: 3;
+  }
+
+  /* .triad-left .triad-card, */
+  /* .triad-right .triad-card { */
+  /*     height: auto; */
+  /* } */
+
+  /*   .triad-card img { */
+  /*     height: 100%; */
+  /*     width: 100%; */
+  /*     object-fit: contain; */
+  /* } */
+
+
+  
+}
+
+@media (max-height: 900px) {
+  :root {
+    --annotations-height: 24%;
+    --triad-pad: 12px;
+  }
+}
+
+.annotate-view {
+  padding: clamp(16px, 3vw, 32px);
+  gap: clamp(16px, 2vw, 24px);
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 100vh;
+}
+
+.annotate-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(26, 36, 48, 0.12);
+  border-radius: 18px;
+  padding: clamp(16px, 2.5vw, 24px);
+  box-shadow: var(--shadow);
+}
+
+.annotate-title h1 {
+  margin: 0;
+  font-size: clamp(20px, 2.2vw, 28px);
+}
+
+.annotate-subtitle {
+  margin: 6px 0 0;
+  color: rgba(26, 36, 48, 0.6);
+  font-weight: 600;
+}
+
+.annotate-status {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px 18px;
+  min-width: min(60vw, 520px);
+}
+
+.annotate-status-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-weight: 700;
+  color: var(--bg-ink);
+}
+
+.annotate-triad-diagram {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(64px, 1fr));
+  grid-template-rows: repeat(2, minmax(44px, auto));
+  gap: 8px;
+  align-items: center;
+}
+
+.annotate-triad-cell {
+  position: relative;
+  border-radius: 12px;
+  border: 1px solid rgba(26, 36, 48, 0.18);
+  background: #fff;
+  min-height: 44px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 18px rgba(26, 36, 48, 0.12);
+}
+
+.annotate-triad-cell.is-pair {
+  border-color: rgba(244, 91, 105, 0.9);
+  box-shadow: 0 10px 20px rgba(244, 91, 105, 0.24);
+}
+
+.annotate-triad-cell.is-odd {
+  border-color: rgba(42, 59, 79, 0.9);
+  box-shadow: 0 10px 20px rgba(42, 59, 79, 0.24);
+}
+
+.annotate-triad-label {
+  position: absolute;
+  top: 6px;
+  left: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: rgba(26, 36, 48, 0.5);
+}
+
+.annotate-triad-value {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.annotate-triad-cell.cell-a {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.annotate-triad-cell.cell-b {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+}
+
+.annotate-triad-cell.cell-c {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.annotate-status-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(26, 36, 48, 0.5);
+}
+
+.annotate-status-value {
+  font-size: 14px;
+}
+
+.annotate-status-value.is-warning {
+  color: #9a3412;
+}
+
+.annotate-status-value.is-success {
+  color: #14532d;
+}
+
+.annotate-body {
+  display: grid;
+  gap: clamp(16px, 2vw, 24px);
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  align-items: start;
+}
+
+.annotate-panel {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(26, 36, 48, 0.12);
+  border-radius: 18px;
+  padding: clamp(16px, 2.2vw, 24px);
+  box-shadow: var(--shadow);
+}
+
+.annotate-panel-header h2 {
+  margin: 0 0 6px;
+  font-size: 18px;
+}
+
+.annotate-panel-header p {
+  margin: 0 0 16px;
+  color: rgba(26, 36, 48, 0.6);
+  font-weight: 600;
+}
+
+.annotate-form {
+  display: grid;
+  gap: 16px;
+}
+
+.annotate-fields {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.annotate-form label {
+  display: flex;
+  flex-direction: column;
+  font-weight: 700;
+  font-size: 13px;
+  gap: 6px;
+}
+
+.annotate-form input {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(26, 36, 48, 0.2);
+  font-size: 14px;
+}
+
+.annotate-override summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--accent-ink);
+}
+
+.annotate-override-fields {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  margin-top: 12px;
+}
+
+.annotate-override-grid {
+  grid-template-columns: repeat(2, minmax(140px, 1fr));
+  grid-template-rows: repeat(2, minmax(60px, auto));
+  align-items: center;
+}
+
+.annotate-override-cell {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(26, 36, 48, 0.12);
+  border-radius: 12px;
+  padding: 8px 10px;
+}
+
+.annotate-override-cell.cell-a {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.annotate-override-cell.cell-b {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+}
+
+.annotate-override-cell.cell-c {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.annotate-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.annotate-actions button {
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.annotate-actions .annotate-retry-button {
+  background: rgba(26, 36, 48, 0.12);
+  color: var(--bg-ink);
+}
+
+.annotate-retry-count {
+  min-width: 74px;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(26, 36, 48, 0.6);
+}
+
+.annotate-save-message {
+  font-weight: 700;
+  color: rgba(26, 36, 48, 0.6);
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.annotate-save-message.is-warning {
+  color: #9a3412;
+}
+
+.annotate-save-message.is-success {
+  color: #14532d;
+}
+
+.annotate-save-message.is-visible {
+  opacity: 1;
+}
+
+.annotate-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr);
+  grid-template-rows: auto auto auto;
+  align-items: center;
+}
+
+.annotate-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(26, 36, 48, 0.12);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.annotate-slot.is-individual {
+  border-style: solid;
+  border-color: #0f141b;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.annotate-slot.is-pair {
+  border-color: rgba(26, 36, 48, 0.1);
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.annotate-slot.slot-a {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.annotate-slot.slot-ab {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.annotate-slot.slot-b {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.annotate-slot.slot-ac {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.annotate-slot.slot-c {
+  grid-column: 1;
+  grid-row: 3;
+}
+
+.annotate-slot.slot-bc {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+.annotate-panel-header-override {
+  margin: 8px 0 16px;
+}
+
+@media (max-width: 900px) {
+  .annotate-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .annotate-status {
+    min-width: auto;
+    width: 100%;
+  }
+
+  .annotate-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+
+  .annotate-slot.slot-b,
+  .annotate-slot.slot-a,
+  .annotate-slot.slot-ab,
+  .annotate-slot.slot-ac,
+  .annotate-slot.slot-c,
+  .annotate-slot.slot-bc {
+    grid-column: auto;
+    grid-row: auto;
+  }
+}

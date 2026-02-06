@@ -1,0 +1,124 @@
+<%- include("layout", {
+  pageTitle: "Combinations",
+  mode,
+  showStatus: false,
+  showChrome: false
+}) %>
+
+<div class="view triad-annotations-view">
+  <% const ids = state?.triad ?? { a: "", b: "", c: "" }; %>
+  <% const imgs = triadImages ?? { a: null, b: null, c: null }; %>
+
+  <% if (showForm) { %>
+    <section class="triad-form">
+      <form action="/display" method="get">
+        <div class="triad-form-row">
+          <label>
+            A
+            <input name="a" value="<%= ids.a || "" %>" />
+            <% if (triadErrors?.a) { %><span class="form-error">invalid</span><% } %>
+          </label>
+          <label>
+            B
+            <input name="b" value="<%= ids.b || "" %>" />
+            <% if (triadErrors?.b) { %><span class="form-error">invalid</span><% } %>
+          </label>
+          <label>
+            C
+            <input name="c" value="<%= ids.c || "" %>" />
+            <% if (triadErrors?.c) { %><span class="form-error">invalid</span><% } %>
+          </label>
+          <button type="submit">Show</button>
+        </div>
+      </form>
+    </section>
+  <% } %>
+
+  <% if (!showForm) { %>
+  <section class="triad-stage" data-triad-a="<%= ids.a %>" data-triad-b="<%= ids.b %>" data-triad-c="<%= ids.c %>">
+    <div class="triad-grid">
+      <div class="triad-left">
+        <div class="triad-slot triad-slot-a">
+          <div class="triad-card card-a" data-triad="a">
+            <div class="triad-label">A</div>
+            <div class="annotation-tag annotation-tag-pair"></div>
+            <div class="annotation-tag annotation-tag-odd"></div>
+            <% if (imgs.a) { %>
+              <img src="<%= imgs.a %>" alt="Triad A" />
+            <% } else { %>
+              <div class="image-missing">Missing image (<%= ids.a || "empty" %>)</div>
+            <% } %>
+          </div>
+        </div>
+        <div class="triad-slot triad-slot-c">
+          <div class="triad-card card-c" data-triad="c">
+            <div class="triad-label">C</div>
+            <div class="annotation-tag annotation-tag-pair"></div>
+            <div class="annotation-tag annotation-tag-odd"></div>
+            <% if (imgs.c) { %>
+              <img src="<%= imgs.c %>" alt="Triad C" />
+            <% } else { %>
+              <div class="image-missing">Missing image (<%= ids.c || "empty" %>)</div>
+            <% } %>
+          </div>
+        </div>
+      </div>
+      <div class="triad-right">
+        <div class="triad-slot triad-slot-b">
+          <div class="triad-card card-b" data-triad="b">
+            <div class="triad-label">B</div>
+            <div class="annotation-tag annotation-tag-pair"></div>
+            <div class="annotation-tag annotation-tag-odd"></div>
+            <% if (imgs.b) { %>
+              <img src="<%= imgs.b %>" alt="Triad B" />
+            <% } else { %>
+              <div class="image-missing">Missing image (<%= ids.b || "empty" %>)</div>
+            <% } %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="annotations-panel">
+    <div class="annotations-row">
+      <ul class="annotation-list" data-combo="true">
+        <% const combos = [
+          { pair: "ab", odd: "c" },
+          { pair: "ac", odd: "b" },
+          { pair: "bc", odd: "a" },
+        ]; %>
+        <% combos.forEach((combo) => { %>
+          <li class="annotation-item"
+              data-annotation="true"
+              data-pair="<%= combo.pair %>"
+              data-odd="<%= combo.odd %>">
+            <div class="annotation-diagram pair-<%= combo.pair %> odd-<%= combo.odd %>">
+              <div class="diag-sq pos-a <%= combo.pair.includes("a") ? "is-pair" : "is-odd" %>"></div>
+              <div class="diag-sq pos-b <%= combo.pair.includes("b") ? "is-pair" : "is-odd" %>"></div>
+              <div class="diag-sq pos-c <%= combo.pair.includes("c") ? "is-pair" : "is-odd" %>"></div>
+            </div>
+          </li>
+        <% }) %>
+      </ul>
+      <div class="combo-actions">
+        <a class="combo-next" href="/display">Next triad</a>
+      </div>
+    </div>
+  </section>
+  <% } %>
+</div>
+
+<% if (!showForm) { %>
+  <script>
+    window.__COMBO_LOG = {
+      url: "/display/log",
+      sessionId: "<%= sessionId %>",
+      triad: { a: "<%= ids.a %>", b: "<%= ids.b %>", c: "<%= ids.c %>" }
+    };
+  </script>
+<% } %>
+
+</main>
+  </body>
+</html>

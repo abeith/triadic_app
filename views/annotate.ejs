@@ -1,0 +1,142 @@
+<%- include("layout", {
+  pageTitle: "Annotate",
+  mode,
+  showStatus: false,
+  showChrome: false
+}) %>
+
+<div class="view annotate-view">
+  <section class="annotate-header">
+    <div class="annotate-title">
+      <h1>Annotation logging</h1>
+      <p class="annotate-subtitle">Assistant view</p>
+    </div>
+    <div class="annotate-status">
+      <div class="annotate-status-item">
+        <span class="annotate-status-label">Triad</span>
+        <div class="annotate-triad-diagram">
+          <div class="annotate-triad-cell cell-a">
+            <span class="annotate-triad-label">A</span>
+            <span class="annotate-triad-value" data-current-triad-a>-</span>
+          </div>
+          <div class="annotate-triad-cell cell-b">
+            <span class="annotate-triad-label">B</span>
+            <span class="annotate-triad-value" data-current-triad-b>-</span>
+          </div>
+          <div class="annotate-triad-cell cell-c">
+            <span class="annotate-triad-label">C</span>
+            <span class="annotate-triad-value" data-current-triad-c>-</span>
+          </div>
+        </div>
+      </div>
+      <div class="annotate-status-item">
+        <span class="annotate-status-label">Pair</span>
+        <span class="annotate-status-value" data-current-selection>-</span>
+      </div>
+      <div class="annotate-status-item">
+        <span class="annotate-status-label">Odd</span>
+        <span class="annotate-status-value" data-current-odd>-</span>
+      </div>
+      <div class="annotate-status-item">
+        <span class="annotate-status-label">Session</span>
+        <span class="annotate-status-value" data-current-session>-</span>
+      </div>
+      <div class="annotate-status-item">
+        <span class="annotate-status-label">Sync</span>
+        <span class="annotate-status-value" data-sync-status>Checking...</span>
+      </div>
+      <div class="annotate-status-item">
+        <span class="annotate-status-label">Display context</span>
+        <span class="annotate-status-value" data-display-context>-</span>
+      </div>
+      <div class="annotate-status-item">
+        <span class="annotate-status-label">Last saved</span>
+        <span class="annotate-status-value" data-last-saved>-</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="annotate-body">
+    <div class="annotate-panel annotate-panel-with-view">
+      <div class="annotate-panel-header">
+        <h2>With current view</h2>
+        <p>Labels apply to the current selection in /display.</p>
+      </div>
+      <form class="annotate-form" data-annotate-form="with-view" autocomplete="off">
+        <div class="annotate-fields">
+          <label>
+            Pair label
+            <input name="pair_label" placeholder="Label" />
+          </label>
+          <label>
+            Odd label
+            <input name="odd_label" placeholder="Label" />
+          </label>
+        </div>
+        <div class="annotate-actions">
+          <button type="submit">Save</button>
+          <button type="button" class="annotate-retry-button" data-retry-button hidden>
+            Retry unsaved
+          </button>
+          <span class="annotate-retry-count" data-retry-count></span>
+          <span class="annotate-save-message" data-save-message></span>
+        </div>
+      </form>
+      <details class="annotate-override" data-annotate-override open>
+        <summary>Override selection (standalone labels)</summary>
+        <div class="annotate-panel-header annotate-panel-header-override">
+          <p>Use when labels do not match the current pair selection.</p>
+        </div>
+        <form class="annotate-form" data-annotate-form="override" autocomplete="off">
+          <div class="annotate-grid">
+            <label class="annotate-slot slot-a is-individual">
+              A
+              <input name="a_label" placeholder="Label" />
+            </label>
+            <label class="annotate-slot slot-ab is-pair">
+              A &amp; B
+              <input name="ab_label" placeholder="Label" />
+            </label>
+            <label class="annotate-slot slot-b is-individual">
+              B
+              <input name="b_label" placeholder="Label" />
+            </label>
+            <label class="annotate-slot slot-ac is-pair">
+              A &amp; C
+              <input name="ac_label" placeholder="Label" />
+            </label>
+            <label class="annotate-slot slot-c is-individual">
+              C
+              <input name="c_label" placeholder="Label" />
+            </label>
+            <label class="annotate-slot slot-bc is-pair">
+              B &amp; C
+              <input name="bc_label" placeholder="Label" />
+            </label>
+          </div>
+          <div class="annotate-actions">
+            <button type="submit">Save override</button>
+            <button type="button" class="annotate-retry-button" data-retry-button hidden>
+              Retry unsaved
+            </button>
+            <span class="annotate-retry-count" data-retry-count></span>
+            <span class="annotate-save-message" data-save-message></span>
+          </div>
+        </form>
+      </details>
+    </div>
+  </section>
+</div>
+
+<script>
+  window.__ANNOTATE_CFG = {
+    pollUrl: "/display/now",
+    logUrl: "/annotate/log",
+    sessionId: "<%= sessionId %>"
+  };
+</script>
+<script src="/annotate.js" defer></script>
+
+</main>
+  </body>
+</html>

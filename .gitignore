@@ -1,0 +1,13 @@
+/.env
+/.imageurls
+/TODO.md
+/data/
+/node_modules/
+/print/
+/public/images/*
+.DS_Store
+/runtime_exports/*.tgz
+/state/
+/.printignore
+/.printinclude
+/AGENTS.md

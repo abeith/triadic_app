@@ -1,0 +1,34 @@
+{
+  "name": "triadic_app",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Locally hosted, experimenter-operated web application for facilitated group triadic comparison tasks using physical image cards.",
+  "type": "module",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "check-db": "node bin/check-db.js",
+    "export-db": "node bin/export-db.js",
+    "rename-image": "node bin/rename-next-image.js",
+    "print-images": "node bin/print-images.js",
+    "import-images": "node bin/import-image-urls.js",
+    "import-and-rename": "node bin/import-image-urls.js && node bin/rename-next-image.js",
+    "export-runtime": "node bin/export-runtime.js",
+    "import-runtime": "node bin/import-runtime.js",
+    "lint": "prettier --check \"**/*.{js,json,md,qmd,yml,yaml}\"",
+    "format": "prettier --write \"**/*.{js,json,md,qmd,yml,yaml}\""
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "ejs": "^3.1.9",
+    "dotenv": "^16.4.5",
+    "better-sqlite3": "^12.4.5"
+  },
+  "devDependencies": {
+    "prettier": "^3.2.5"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}

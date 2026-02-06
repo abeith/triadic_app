@@ -1,0 +1,5 @@
+# One image URL per line. Lines starting with # are ignored.
+# After import, .imageurls is cleared so keep your source list elsewhere.
+https://example.com/image-0001.jpg
+https://example.com/image-0002.png
+https://example.com/image-0003.jpeg

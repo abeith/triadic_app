@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title><%= pageTitle ?? "Triadic Display" %></title>
+    <link rel="stylesheet" href="/style.css" />
+    <script src="/ui.js" defer></script>
+  </head>
+  <body class="mode-<%= mode ?? "triad" %>">
+    <% const chrome = typeof showChrome === "boolean" ? showChrome : false; %>
+    <% if (chrome) { %>
+      <header class="app-header">
+        <div class="brand">
+          <span class="brand-title">Triadic Comparison</span>
+        </div>
+        <% if (showStatus) { %>
+          <div class="status-strip">
+            <% if (warnings?.length) { %>
+              <span class="status-warn">Warnings: <%= warnings.length %></span>
+            <% } %>
+            <% if (serverMeta?.loadedAt) { %>
+              <span class="status-meta">Loaded: <%= serverMeta.loadedAt %></span>
+            <% } %>
+          </div>
+        <% } %>
+      </header>
+    <% } %>
+    <main class="content">
