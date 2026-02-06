@@ -2,8 +2,6 @@
 
 This app provides a set of tools to run a group-based triadic comparison task. In a participant-facing UI three images are displays and the experimenter can highlight any two images of the triad to compare and contrast with the remaining image. In a researcher-facing UI participant labels can be annotated with timestamps and display state information. This allows the researcher to align audio transcripts of the session with the stimuli that were being displayed. 
 
-This app serves a combinations-style triadic display. Provide a triad (A/B/C), pick a pair from three fixed diagrams, and log each selection to SQLite.
-
 ## Quick start
 
 This assumes that you [have node installed](https://nodejs.org/en/download) and some familiarity with the command line. 
