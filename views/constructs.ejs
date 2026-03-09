@@ -1,0 +1,307 @@
+<%- include("layout", {
+  pageTitle: "Constructs",
+  mode,
+  showStatus: false,
+  showChrome: false
+}) %>
+<%
+  const sessionSummaryText = sessionIds?.length
+    ? `for session${sessionIds.length === 1 ? "" : "s"} ${sessionIds.join(", ")}`
+    : "across all sessions";
+%>
+
+<div class="view constructs-view">
+  <section class="constructs-header">
+    <div>
+      <h1>Constructs</h1>
+      <p
+        class="constructs-summary"
+        data-constructs-summary
+        data-session-summary="<%= sessionSummaryText %>"
+      >
+        Showing <span data-construct-count><%= count %></span> construct<span data-construct-count-suffix><%= count === 1 ? "" : "s" %></span>
+        <span data-session-summary-text><%= sessionSummaryText %></span>
+      </p>
+    </div>
+    <div class="constructs-meta">
+      <span>Limit: <%= limit %></span>
+      <span
+        class="constructs-sync-indicator"
+        title="Synced on load (<%= syncResult?.inserted ?? 0 %> new from <%= syncResult?.scanned ?? 0 %> scanned)"
+      >
+        Synced
+      </span>
+    </div>
+  </section>
+
+  <% if (!constructs?.length) { %>
+    <section class="constructs-empty">
+      <p>No constructs found for this scope.</p>
+    </section>
+  <% } else { %>
+    <section class="constructs-list">
+      <% constructs.forEach((construct) => { %>
+        <article
+          class="construct-card"
+          data-construct-id="<%= construct.id %>"
+          data-label1="<%= construct.label1 %>"
+          data-label2="<%= construct.label2 %>"
+          data-label1-polarity="<%= construct.label1_polarity %>"
+          data-label2-polarity="<%= construct.label2_polarity %>"
+          data-source-session-id="<%= construct.source_session_id ?? '' %>"
+          data-derived-from-construct-id="<%= construct.derived_from_construct_id ?? '' %>"
+          data-vote-score="<%= Number(construct.vote_score ?? 0) %>"
+        >
+          <div class="construct-row">
+            <div class="construct-side construct-side-left" data-pole="label1">
+              <div class="construct-polarity-slot" data-polarity-slot data-pole="label1">
+                <div class="construct-polarity-controls" data-polarity-controls data-pole="label1">
+                  <button
+                    type="button"
+                    class="construct-polarity-button is-positive"
+                    data-polarity-button
+                    data-pole="label1"
+                    data-polarity="positive"
+                    aria-label="Set label 1 polarity to positive"
+                  >
+                    <svg
+                      class="construct-symbol"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                      focusable="false"
+                    >
+                      <line x1="4" y1="12" x2="20" y2="12"></line>
+                      <line x1="12" y1="4" x2="12" y2="20"></line>
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    class="construct-polarity-button is-neutral"
+                    data-polarity-button
+                    data-pole="label1"
+                    data-polarity="neutral"
+                    aria-label="Set label 1 polarity to neutral"
+                  >
+                    <svg
+                      class="construct-symbol"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                      focusable="false"
+                    >
+                      <circle cx="12" cy="12" r="7"></circle>
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    class="construct-polarity-button is-negative"
+                    data-polarity-button
+                    data-pole="label1"
+                    data-polarity="negative"
+                    aria-label="Set label 1 polarity to negative"
+                  >
+                    <svg
+                      class="construct-symbol"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                      focusable="false"
+                    >
+                      <line x1="4" y1="12" x2="20" y2="12"></line>
+                    </svg>
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  class="construct-polarity-icon"
+                  data-polarity-icon
+                  data-polarity-reset
+                  data-pole="label1"
+                  aria-label="Reset label 1 polarity"
+                >
+                  <span class="construct-polarity-symbol" data-polarity-symbol></span>
+                </button>
+              </div>
+              <div
+                class="construct-label polarity-<%= construct.label1_polarity %>"
+                data-pole="label1"
+                data-polarity="<%= construct.label1_polarity %>"
+              >
+                <span class="construct-label-text"><%= construct.label1 %></span>
+              </div>
+            </div>
+            <div class="construct-relationship" data-relationship>
+              <span class="construct-relationship-symbol-slot" data-relationship-symbol></span>
+            </div>
+            <div class="construct-side construct-side-right" data-pole="label2">
+              <div
+                class="construct-label polarity-<%= construct.label2_polarity %>"
+                data-pole="label2"
+                data-polarity="<%= construct.label2_polarity %>"
+              >
+                <span class="construct-label-text"><%= construct.label2 %></span>
+              </div>
+              <div class="construct-polarity-slot" data-polarity-slot data-pole="label2">
+                <div class="construct-polarity-controls" data-polarity-controls data-pole="label2">
+                  <button
+                    type="button"
+                    class="construct-polarity-button is-positive"
+                    data-polarity-button
+                    data-pole="label2"
+                    data-polarity="positive"
+                    aria-label="Set label 2 polarity to positive"
+                  >
+                    <svg
+                      class="construct-symbol"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                      focusable="false"
+                    >
+                      <line x1="4" y1="12" x2="20" y2="12"></line>
+                      <line x1="12" y1="4" x2="12" y2="20"></line>
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    class="construct-polarity-button is-neutral"
+                    data-polarity-button
+                    data-pole="label2"
+                    data-polarity="neutral"
+                    aria-label="Set label 2 polarity to neutral"
+                  >
+                    <svg
+                      class="construct-symbol"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                      focusable="false"
+                    >
+                      <circle cx="12" cy="12" r="7"></circle>
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    class="construct-polarity-button is-negative"
+                    data-polarity-button
+                    data-pole="label2"
+                    data-polarity="negative"
+                    aria-label="Set label 2 polarity to negative"
+                  >
+                    <svg
+                      class="construct-symbol"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                      focusable="false"
+                    >
+                      <line x1="4" y1="12" x2="20" y2="12"></line>
+                    </svg>
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  class="construct-polarity-icon"
+                  data-polarity-icon
+                  data-polarity-reset
+                  data-pole="label2"
+                  aria-label="Reset label 2 polarity"
+                >
+                  <span class="construct-polarity-symbol" data-polarity-symbol></span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="construct-inline-slot" data-inline-editor></div>
+          <div class="construct-card-footer">
+            <div
+              class="construct-card-controls"
+              role="group"
+              aria-label="Construct controls"
+            >
+              <button
+                type="button"
+                class="construct-control-button is-duplicate"
+                data-duplicate-construct
+                aria-label="Duplicate construct row"
+                title="Duplicate"
+              >
+                <svg
+                  class="construct-control-icon"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <rect x="9" y="9" width="10" height="10" rx="1.5"></rect>
+                  <rect x="5" y="5" width="10" height="10" rx="1.5"></rect>
+                </svg>
+              </button>
+              <button
+                type="button"
+                class="construct-control-button is-vote"
+                data-vote-construct
+                data-vote-delta="1"
+                aria-label="Upvote construct"
+                title="Upvote"
+              >
+                <svg
+                  class="construct-control-icon"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <path d="M6 14 L12 8 L18 14"></path>
+                </svg>
+              </button>
+              <span class="construct-control-score" data-vote-score>
+                <%= Number(construct.vote_score ?? 0) %>
+              </span>
+              <button
+                type="button"
+                class="construct-control-button is-vote"
+                data-vote-construct
+                data-vote-delta="-1"
+                aria-label="Downvote construct"
+                title="Downvote"
+              >
+                <svg
+                  class="construct-control-icon"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <path d="M6 10 L12 16 L18 10"></path>
+                </svg>
+              </button>
+              <button
+                type="button"
+                class="construct-control-button is-delete"
+                data-hide-construct
+                aria-label="Hide construct in this session"
+                title="Hide in this session"
+              >
+                <svg
+                  class="construct-control-icon"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <path d="M8 8 L16 16"></path>
+                  <path d="M16 8 L8 16"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </article>
+      <% }) %>
+    </section>
+  <% } %>
+</div>
+
+<script>
+  window.__CONSTRUCTS_CFG = {
+    apiBase: "/api/constructs",
+    sessionId: <%- JSON.stringify(sessionId ?? null) %>
+  };
+</script>
+<script src="/constructs.js" defer></script>
+
+</main>
+  </body>
+</html>

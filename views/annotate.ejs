@@ -6,124 +6,182 @@
 }) %>
 
 <div class="view annotate-view">
-  <section class="annotate-header">
-    <div class="annotate-title">
-      <h1>Annotation logging</h1>
-      <p class="annotate-subtitle">Assistant view</p>
-    </div>
-    <div class="annotate-status">
-      <div class="annotate-status-item">
-        <span class="annotate-status-label">Triad</span>
-        <div class="annotate-triad-diagram">
+  <section class="annotate-body">
+    <div class="annotate-panel annotate-preview-panel">
+      <div class="annotate-triad-diagram annotate-triad-diagram-large">
+        <div class="annotate-triad-col annotate-triad-col-left">
           <div class="annotate-triad-cell cell-a">
             <span class="annotate-triad-label">A</span>
+            <img data-current-triad-image-a alt="Triad A preview" hidden />
             <span class="annotate-triad-value" data-current-triad-a>-</span>
-          </div>
-          <div class="annotate-triad-cell cell-b">
-            <span class="annotate-triad-label">B</span>
-            <span class="annotate-triad-value" data-current-triad-b>-</span>
           </div>
           <div class="annotate-triad-cell cell-c">
             <span class="annotate-triad-label">C</span>
+            <img data-current-triad-image-c alt="Triad C preview" hidden />
             <span class="annotate-triad-value" data-current-triad-c>-</span>
           </div>
         </div>
+        <div class="annotate-triad-col annotate-triad-col-right">
+          <div class="annotate-triad-slot" aria-hidden="true"></div>
+          <div class="annotate-triad-cell cell-b">
+            <span class="annotate-triad-label">B</span>
+            <img data-current-triad-image-b alt="Triad B preview" hidden />
+            <span class="annotate-triad-value" data-current-triad-b>-</span>
+          </div>
+          <div class="annotate-triad-slot" aria-hidden="true"></div>
+        </div>
       </div>
-      <div class="annotate-status-item">
-        <span class="annotate-status-label">Pair</span>
-        <span class="annotate-status-value" data-current-selection>-</span>
-      </div>
-      <div class="annotate-status-item">
-        <span class="annotate-status-label">Odd</span>
-        <span class="annotate-status-value" data-current-odd>-</span>
-      </div>
-      <div class="annotate-status-item">
-        <span class="annotate-status-label">Session</span>
-        <span class="annotate-status-value" data-current-session>-</span>
-      </div>
-      <div class="annotate-status-item">
-        <span class="annotate-status-label">Sync</span>
-        <span class="annotate-status-value" data-sync-status>Checking...</span>
-      </div>
-      <div class="annotate-status-item">
-        <span class="annotate-status-label">Display context</span>
-        <span class="annotate-status-value" data-display-context>-</span>
-      </div>
-      <div class="annotate-status-item">
-        <span class="annotate-status-label">Last saved</span>
-        <span class="annotate-status-value" data-last-saved>-</span>
+      <div class="annotate-sequence-nav">
+        <button
+          type="button"
+          class="annotate-corner-nav"
+          data-nav-back
+          aria-label="Previous display state"
+        >
+          ←
+        </button>
+        <button
+          type="button"
+          class="annotate-sequence-button"
+          data-nav-step="none"
+          title="No highlight"
+          aria-label="Set no highlight"
+        >
+          <span class="annotate-mini-diagram state-none">
+            <span class="mini-bar bar-a"></span>
+            <span class="mini-bar bar-b"></span>
+            <span class="mini-bar bar-c"></span>
+          </span>
+        </button>
+        <button
+          type="button"
+          class="annotate-sequence-button"
+          data-nav-step="ab"
+          title="AB highlighted"
+          aria-label="Set AB highlighted"
+        >
+          <span class="annotate-mini-diagram state-ab">
+            <span class="mini-bar bar-a"></span>
+            <span class="mini-bar bar-b"></span>
+            <span class="mini-bar bar-c"></span>
+          </span>
+        </button>
+        <button
+          type="button"
+          class="annotate-sequence-button"
+          data-nav-step="ac"
+          title="AC highlighted"
+          aria-label="Set AC highlighted"
+        >
+          <span class="annotate-mini-diagram state-ac">
+            <span class="mini-bar bar-a"></span>
+            <span class="mini-bar bar-b"></span>
+            <span class="mini-bar bar-c"></span>
+          </span>
+        </button>
+        <button
+          type="button"
+          class="annotate-sequence-button"
+          data-nav-step="bc"
+          title="BC highlighted"
+          aria-label="Set BC highlighted"
+        >
+          <span class="annotate-mini-diagram state-bc">
+            <span class="mini-bar bar-a"></span>
+            <span class="mini-bar bar-b"></span>
+            <span class="mini-bar bar-c"></span>
+          </span>
+        </button>
+        <button
+          type="button"
+          class="annotate-corner-nav"
+          data-nav-forward
+          aria-label="Next display state"
+        >
+          →
+        </button>
       </div>
     </div>
-  </section>
 
-  <section class="annotate-body">
-    <div class="annotate-panel annotate-panel-with-view">
-      <div class="annotate-panel-header">
-        <h2>With current view</h2>
-        <p>Labels apply to the current selection in /display.</p>
-      </div>
-      <form class="annotate-form" data-annotate-form="with-view" autocomplete="off">
-        <div class="annotate-fields">
-          <label>
-            Pair label
-            <input name="pair_label" placeholder="Label" />
-          </label>
-          <label>
-            Odd label
-            <input name="odd_label" placeholder="Label" />
-          </label>
+    <div class="annotate-panel annotate-form-panel">
+      <div class="annotate-status-banner">
+        <div class="annotate-indicators">
+          <div class="annotate-indicator" title="Live display grouping">
+            <span class="annotate-indicator-label">Live</span>
+            <span class="annotate-mini-diagram state-none" data-live-grouping-diagram>
+              <span class="mini-bar bar-a"></span>
+              <span class="mini-bar bar-b"></span>
+              <span class="mini-bar bar-c"></span>
+            </span>
+          </div>
+          <div class="annotate-indicator" title="Sync status">
+            <span class="annotate-indicator-label">Sync</span>
+            <button
+              type="button"
+              class="annotate-indicator-button"
+              data-sync-button
+              aria-label="Sync with live display"
+              title="Sync with live display"
+            >
+              <span class="annotate-indicator-value" data-sync-status>◌</span>
+            </button>
+          </div>
+          <div class="annotate-indicator" title="View lock status">
+            <span class="annotate-indicator-label">Lock</span>
+            <span class="annotate-indicator-value" data-lock-status aria-live="polite"></span>
+          </div>
         </div>
-        <div class="annotate-actions">
+      </div>
+      <div class="annotate-panel-header">
+        <h2>Annotation</h2>
+      </div>
+      <form class="annotate-form annotate-form-stack" data-annotate-form="streamlined" autocomplete="off">
+        <label>
+          <span class="annotate-label-caption" data-label1-caption>Label 1</span>
+          <input
+            name="label1"
+            data-mirror-field="label1"
+            class="annotate-label-input annotate-label-input-label1"
+            required
+          />
+        </label>
+        <label>
+          <span class="annotate-label-caption" data-label2-caption>Label 2</span>
+          <input
+            name="label2"
+            data-mirror-field="label2"
+            class="annotate-label-input annotate-label-input-label2"
+            required
+          />
+        </label>
+        <label class="annotate-notes">
+          Notes
+          <textarea
+            name="notes"
+            data-mirror-field="notes"
+            rows="5"
+          ></textarea>
+        </label>
+        <div class="annotate-actions annotate-form-actions">
           <button type="submit">Save</button>
-          <button type="button" class="annotate-retry-button" data-retry-button hidden>
+          <button
+            type="button"
+            class="annotate-retry-button"
+            data-retry-button
+            hidden
+          >
             Retry unsaved
           </button>
+        </div>
+        <div class="annotate-form-status">
           <span class="annotate-retry-count" data-retry-count></span>
           <span class="annotate-save-message" data-save-message></span>
         </div>
       </form>
-      <details class="annotate-override" data-annotate-override open>
-        <summary>Override selection (standalone labels)</summary>
-        <div class="annotate-panel-header annotate-panel-header-override">
-          <p>Use when labels do not match the current pair selection.</p>
-        </div>
-        <form class="annotate-form" data-annotate-form="override" autocomplete="off">
-          <div class="annotate-grid">
-            <label class="annotate-slot slot-a is-individual">
-              A
-              <input name="a_label" placeholder="Label" />
-            </label>
-            <label class="annotate-slot slot-ab is-pair">
-              A &amp; B
-              <input name="ab_label" placeholder="Label" />
-            </label>
-            <label class="annotate-slot slot-b is-individual">
-              B
-              <input name="b_label" placeholder="Label" />
-            </label>
-            <label class="annotate-slot slot-ac is-pair">
-              A &amp; C
-              <input name="ac_label" placeholder="Label" />
-            </label>
-            <label class="annotate-slot slot-c is-individual">
-              C
-              <input name="c_label" placeholder="Label" />
-            </label>
-            <label class="annotate-slot slot-bc is-pair">
-              B &amp; C
-              <input name="bc_label" placeholder="Label" />
-            </label>
-          </div>
-          <div class="annotate-actions">
-            <button type="submit">Save override</button>
-            <button type="button" class="annotate-retry-button" data-retry-button hidden>
-              Retry unsaved
-            </button>
-            <span class="annotate-retry-count" data-retry-count></span>
-            <span class="annotate-save-message" data-save-message></span>
-          </div>
-        </form>
-      </details>
+      <div class="annotate-last-saved">
+        <span class="annotate-status-label">Last saved</span>
+        <span class="annotate-status-value" data-last-saved>-</span>
+      </div>
     </div>
   </section>
 </div>
@@ -131,6 +189,7 @@
 <script>
   window.__ANNOTATE_CFG = {
     pollUrl: "/display/now",
+    historyUrl: "/display/history",
     logUrl: "/annotate/log",
     sessionId: "<%= sessionId %>"
   };

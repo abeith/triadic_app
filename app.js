@@ -61,8 +61,14 @@ const {
   getDisplayEventById,
   logAnnotationSubmission,
   createSession,
-} =
-  await optionalImport(
+  listDisplayEventsBySession,
+  syncConstructsFromAnnotations,
+  listConstructs,
+  createConstruct,
+  logConstructVoteEvent,
+  logConstructVisibilityEvent,
+  logConstructPolarityEvent,
+} = await optionalImport(
   "./lib/db.js",
   "Missing ./lib/db.js. Create it per README.md / proposal.",
 );
@@ -77,6 +83,7 @@ const DB_FILE =
 let SESSION_ID = null;
 let CURRENT_VIEW = {
   triad: null,
+  triadId: null,
   selection: null,
   displayEventId: null,
 };
@@ -90,6 +97,137 @@ app.set("views", path.join(__dirname, "views"));
 
 // Static assets (CSS, placeholder, logo, images)
 app.use(express.static(path.join(__dirname, "public")));
+
+const VALID_PAIR_SELECTIONS = new Set(["ab", "ac", "bc"]);
+const VALID_SELECTIONS = new Set(["ab", "ac", "bc", "override"]);
+const VALID_POLARITY_VALUES = new Set([
+  "unknown",
+  "positive",
+  "negative",
+  "neutral",
+  "positive-absence-presence",
+  "negative-absence-presence",
+]);
+
+const cleanLabel = (value) => {
+  if (value === null || value === undefined) return "";
+  const text = String(value).trim();
+  return text || "";
+};
+
+const normalisePair = (value) => {
+  if (value === null || value === undefined) return null;
+  const text = String(value).trim().toLowerCase();
+  return VALID_PAIR_SELECTIONS.has(text) ? text : null;
+};
+
+const normalisePolarity = (value) => {
+  if (value === null || value === undefined) return "unknown";
+  const text = String(value).trim().toLowerCase();
+  return VALID_POLARITY_VALUES.has(text) ? text : "unknown";
+};
+
+const deriveOddFromPair = (pair) => {
+  if (pair === "ab") return "c";
+  if (pair === "ac") return "b";
+  if (pair === "bc") return "a";
+  return null;
+};
+
+const parseTriadPayload = (triadCandidate) => {
+  if (!triadCandidate || typeof triadCandidate !== "object") return null;
+  const triad = {
+    a: cleanLabel(triadCandidate.a),
+    b: cleanLabel(triadCandidate.b),
+    c: cleanLabel(triadCandidate.c),
+  };
+  if (!triad.a || !triad.b || !triad.c) return null;
+  return triad;
+};
+
+const triadsMatch = (left, right) =>
+  Boolean(
+    left &&
+    right &&
+    left.a === right.a &&
+    left.b === right.b &&
+    left.c === right.c,
+  );
+
+const resolveTriadImageMap = (triad) => {
+  if (!triad) return null;
+  return resolveTriadImages(triad, {
+    imagesDir: IMAGES_DIR,
+  });
+};
+
+const buildCurrentViewPayload = () => ({
+  triad: CURRENT_VIEW.triad,
+  triad_id: CURRENT_VIEW.triadId,
+  triad_images: resolveTriadImageMap(CURRENT_VIEW.triad),
+  selection: CURRENT_VIEW.selection,
+  display_event_id: CURRENT_VIEW.displayEventId,
+  session_id: SESSION_ID,
+});
+
+const toConstructPayload = (row) => {
+  const label1 = String(row.positive_label ?? "").trim();
+  const label2 = String(row.negative_label ?? "").trim();
+  return {
+    id: row.id,
+    label1,
+    label2,
+    label1_polarity: row.label1_polarity ?? "unknown",
+    label2_polarity: row.label2_polarity ?? "unknown",
+    origin_type: row.origin_type,
+    source_annotation_submission_id:
+      row.origin_annotation_submission_id ?? null,
+    source_session_id: row.origin_session_id ?? null,
+    derived_from_construct_id: row.created_from_construct_id ?? null,
+    vote_score: Number(row.vote_score ?? 0),
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+};
+
+const parseLimitedPositiveInt = (value, fallback, max) => {
+  const parsed = Number.parseInt(String(value ?? fallback), 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return Math.min(parsed, max);
+};
+
+const parseSessionTokens = (value) => {
+  if (value === null || value === undefined) return [];
+  const parts = Array.isArray(value) ? value : [value];
+  return parts
+    .flatMap((part) => String(part).split(","))
+    .map((part) => part.trim())
+    .filter(Boolean);
+};
+
+const resolveSessionScope = ({ values, defaultSessionId = null }) => {
+  const tokens = values.flatMap((value) => parseSessionTokens(value));
+  const requestAll = tokens.some((token) => token.toLowerCase() === "all");
+  if (requestAll) return { sessionIds: null };
+
+  const sessionIds = [];
+  for (const token of tokens) {
+    const parsed = Number.parseInt(token, 10);
+    if (!Number.isFinite(parsed) || parsed <= 0) continue;
+    if (!sessionIds.includes(parsed)) sessionIds.push(parsed);
+  }
+
+  if (sessionIds.length) return { sessionIds };
+  if (
+    typeof defaultSessionId === "number" &&
+    Number.isFinite(defaultSessionId) &&
+    defaultSessionId > 0
+  ) {
+    return { sessionIds: [defaultSessionId] };
+  }
+
+  return { sessionIds: null };
+};
 
 // --- Routes -----------------------------------------------------------------
 app.get("/", (_req, res) => res.redirect("/display"));
@@ -152,14 +290,19 @@ app.get("/display", async (_req, res) => {
       selection: null,
       reason: "display-load",
     });
+    const displayEvent = displayEventId
+      ? await getDisplayEventById(DB_FILE, displayEventId)
+      : null;
     CURRENT_VIEW = {
       triad: queryTriad,
+      triadId: displayEvent?.triad_id ?? null,
       selection: null,
       displayEventId,
     };
   } else {
     CURRENT_VIEW = {
       triad: null,
+      triadId: null,
       selection: null,
       displayEventId: null,
     };
@@ -185,9 +328,44 @@ app.get("/annotate", (_req, res) => {
   });
 });
 
+app.get("/constructs", async (req, res) => {
+  const limit = parseLimitedPositiveInt(req.query.limit, 200, 1000);
+  const { sessionIds } = resolveSessionScope({
+    values: [req.query.session, req.query.session_id],
+    defaultSessionId: SESSION_ID,
+  });
+
+  const syncResult = await syncConstructsFromAnnotations({
+    dbFile: DB_FILE,
+    sessionIds,
+    limit: 10000,
+  });
+
+  const rows = await listConstructs({
+    dbFile: DB_FILE,
+    sessionIds,
+    viewerSessionId: SESSION_ID,
+    limit,
+  });
+  const constructs = rows.map(toConstructPayload);
+
+  return res.render("constructs", {
+    mode: "constructs",
+    constructs,
+    limit,
+    count: constructs.length,
+    syncResult,
+    sessionId:
+      Array.isArray(sessionIds) && sessionIds.length === 1
+        ? sessionIds[0]
+        : null,
+    sessionIds: Array.isArray(sessionIds) ? sessionIds : null,
+  });
+});
+
 app.post("/display/log", async (req, res) => {
   const body = req.body ?? {};
-  const triad = body.triad ?? null;
+  const triad = parseTriadPayload(body.triad);
   const selectedPair = body.selectedPair ?? null;
   const order = body.order ?? null;
 
@@ -204,10 +382,7 @@ app.post("/display/log", async (req, res) => {
     sessionId: SESSION_ID,
   });
 
-  const validSelection =
-    selectedPair && ["ab", "ac", "bc"].includes(String(selectedPair))
-      ? String(selectedPair)
-      : null;
+  const validSelection = normalisePair(selectedPair);
   const displayEventId = await createDisplayEvent({
     dbFile: DB_FILE,
     sessionId: SESSION_ID,
@@ -217,59 +392,50 @@ app.post("/display/log", async (req, res) => {
     stateEventId,
   });
 
-  if (
-    triad &&
-    CURRENT_VIEW.triad &&
-    triad.a === CURRENT_VIEW.triad.a &&
-    triad.b === CURRENT_VIEW.triad.b &&
-    triad.c === CURRENT_VIEW.triad.c
-  ) {
-    CURRENT_VIEW.selection = validSelection;
-    CURRENT_VIEW.displayEventId = displayEventId;
-  }
+  const displayEvent = displayEventId
+    ? await getDisplayEventById(DB_FILE, displayEventId)
+    : null;
+  if (triad) CURRENT_VIEW.triad = triad;
+  CURRENT_VIEW.selection = validSelection;
+  CURRENT_VIEW.displayEventId = displayEventId;
+  CURRENT_VIEW.triadId = displayEvent?.triad_id ?? null;
 
   res.json({ ok: true });
 });
 
-const cleanLabel = (value) => {
-  if (value === null || value === undefined) return "";
-  const text = String(value).trim();
-  return text || "";
-};
-
 app.post("/annotate/log", async (req, res) => {
   const body = req.body ?? {};
   const errors = [];
-  const allowedSelections = new Set(["ab", "ac", "bc", "override"]);
   const allowedOdd = new Set(["a", "b", "c"]);
 
-  let triad = null;
-  if (body.triad && typeof body.triad === "object") {
-    triad = {
-      a: body.triad.a ? String(body.triad.a) : "",
-      b: body.triad.b ? String(body.triad.b) : "",
-      c: body.triad.c ? String(body.triad.c) : "",
-    };
-    if (!triad.a || !triad.b || !triad.c) {
-      errors.push("triad-incomplete");
-    }
-  } else if (body.triad) {
+  let triad = parseTriadPayload(body.triad);
+  if (!triad && body.triad !== null && body.triad !== undefined) {
     errors.push("triad-invalid");
-  } else if (CURRENT_VIEW.triad) {
-    triad = CURRENT_VIEW.triad;
   }
+  if (!triad && CURRENT_VIEW.triad) triad = CURRENT_VIEW.triad;
 
-  const selectionRaw = body.selection ?? body.pair ?? body.selectedPair ?? null;
+  const selectionRaw = body.selection ?? body.selectedPair ?? null;
   const selectionNormalized =
     selectionRaw === null || selectionRaw === undefined
       ? null
       : String(selectionRaw).trim().toLowerCase();
   const selectionFromBody =
-    selectionNormalized && allowedSelections.has(selectionNormalized)
+    selectionNormalized && VALID_SELECTIONS.has(selectionNormalized)
       ? selectionNormalized
       : null;
   if (selectionNormalized && !selectionFromBody) {
     errors.push("selection-invalid");
+  }
+
+  const pairRaw = body.pair ?? null;
+  const pairFromBody = normalisePair(pairRaw);
+  if (
+    pairRaw !== null &&
+    pairRaw !== undefined &&
+    String(pairRaw).trim() &&
+    !pairFromBody
+  ) {
+    errors.push("pair-invalid");
   }
 
   let labelsJson = null;
@@ -298,24 +464,30 @@ app.post("/annotate/log", async (req, res) => {
       ? oddNormalized.toLowerCase()
       : null;
   if (oddNormalized && !odd) errors.push("odd-invalid");
-  if (!odd && selectionFromBody !== "override" && !labelsJson) {
-    const selectionForOdd =
-      selectionRaw === null || selectionRaw === undefined
-        ? CURRENT_VIEW.selection
-        : selectionFromBody;
-    if (selectionForOdd === "ab") odd = "c";
-    if (selectionForOdd === "ac") odd = "b";
-    if (selectionForOdd === "bc") odd = "a";
+
+  let pairForLog =
+    pairFromBody ??
+    (selectionFromBody && VALID_PAIR_SELECTIONS.has(selectionFromBody)
+      ? selectionFromBody
+      : null);
+  if (
+    !pairForLog &&
+    pairRaw === null &&
+    (selectionRaw === null || selectionRaw === undefined) &&
+    CURRENT_VIEW.selection
+  ) {
+    pairForLog = normalisePair(CURRENT_VIEW.selection);
   }
 
-  const pairLabel = cleanLabel(body.pair_label ?? body.pairLabel ?? "");
-  const oddLabel = cleanLabel(body.odd_label ?? body.oddLabel ?? "");
+  if (!odd) odd = deriveOddFromPair(pairForLog);
+
+  const label1 = cleanLabel(body.label1 ?? body.pair_label ?? body.pairLabel);
+  const label2 = cleanLabel(body.label2 ?? body.odd_label ?? body.oddLabel);
+  const notes = cleanLabel(body.notes ?? body.note);
 
   const selectionForLog = labelsJson
-    ? selectionFromBody ?? "override"
-    : selectionRaw === null || selectionRaw === undefined
-      ? CURRENT_VIEW.selection ?? null
-      : selectionFromBody;
+    ? (selectionFromBody ?? "override")
+    : (pairForLog ?? (selectionFromBody === "override" ? "override" : null));
 
   const displayEventIdRaw =
     body.display_event_id ?? body.displayEventId ?? CURRENT_VIEW.displayEventId;
@@ -366,21 +538,28 @@ app.post("/annotate/log", async (req, res) => {
 
   if (
     linkedDisplayEvent &&
-    selectionForLog &&
-    selectionForLog !== "override" &&
+    pairForLog &&
     linkedDisplayEvent.selection &&
-    selectionForLog !== linkedDisplayEvent.selection
+    pairForLog !== linkedDisplayEvent.selection
   ) {
     errors.push("display-selection-mismatch");
-    linkNote = linkNote ? `${linkNote};display-selection-mismatch` : "display-selection-mismatch";
+    linkNote = linkNote
+      ? `${linkNote};display-selection-mismatch`
+      : "display-selection-mismatch";
   }
 
   const submissionMode = labelsJson ? "override" : "current-view";
   const inputStartedAtRaw =
     body.input_started_at ?? body.inputStartedAt ?? body.input_started ?? null;
-  const inputStartedAt = inputStartedAtRaw
-    ? String(inputStartedAtRaw)
-    : null;
+  const inputStartedAt = inputStartedAtRaw ? String(inputStartedAtRaw) : null;
+  const triadIdRaw =
+    body.triad_id ??
+    body.triadId ??
+    linkedDisplayEvent?.triad_id ??
+    CURRENT_VIEW.triadId;
+  const parsedTriadId = Number.parseInt(String(triadIdRaw ?? ""), 10);
+  const triadId =
+    Number.isFinite(parsedTriadId) && parsedTriadId > 0 ? parsedTriadId : null;
 
   await logAnnotationSubmission({
     dbFile: DB_FILE,
@@ -389,11 +568,16 @@ app.post("/annotate/log", async (req, res) => {
     inputStartedAt,
     submittedAt: new Date().toISOString(),
     displayEventId,
+    triadId,
     triad,
     selection: selectionForLog,
     odd,
-    pairLabel,
-    oddLabel,
+    label1: label1 || null,
+    label2: label2 || null,
+    notes: notes || null,
+    pair: pairForLog,
+    pairLabel: label1 || null,
+    oddLabel: label2 || null,
     labels: labelsJson,
     linkStatus,
     linkNote,
@@ -407,9 +591,9 @@ app.post("/annotate/log", async (req, res) => {
     sessionId: SESSION_ID,
     triad,
     selection: selectionForLog,
-    pairLabel: cleanLabel(pairLabel),
+    pairLabel: label1 || null,
     odd,
-    oddLabel: cleanLabel(oddLabel),
+    oddLabel: label2 || null,
     labelsJson: labelsJson
       ? {
           a: cleanLabel(labelsJson.a ?? ""),
@@ -429,11 +613,332 @@ app.post("/annotate/log", async (req, res) => {
 });
 
 app.get("/display/now", (_req, res) => {
+  res.json(buildCurrentViewPayload());
+});
+
+app.get("/display/history", async (req, res) => {
+  const parsedLimit = Number.parseInt(String(req.query.limit ?? "200"), 10);
+  const limit =
+    Number.isFinite(parsedLimit) && parsedLimit > 0
+      ? Math.min(parsedLimit, 1000)
+      : 200;
+  const rows = await listDisplayEventsBySession(DB_FILE, SESSION_ID, limit);
+  const events = rows.map((row) => {
+    const triad = {
+      a: row.triad_a ?? "",
+      b: row.triad_b ?? "",
+      c: row.triad_c ?? "",
+    };
+    const triadComplete = triad.a && triad.b && triad.c;
+    return {
+      id: row.id,
+      ts: row.ts,
+      triad_id: row.triad_id ?? null,
+      triad: triadComplete ? triad : null,
+      triad_images: triadComplete ? resolveTriadImageMap(triad) : null,
+      selection: row.selection ?? null,
+      reason: row.reason ?? null,
+    };
+  });
+
   res.json({
-    triad: CURRENT_VIEW.triad,
-    selection: CURRENT_VIEW.selection,
-    display_event_id: CURRENT_VIEW.displayEventId,
     session_id: SESSION_ID,
+    current_display_event_id: CURRENT_VIEW.displayEventId,
+    events,
+  });
+});
+
+app.get("/api/constructs", async (req, res) => {
+  const limit = parseLimitedPositiveInt(req.query.limit, 200, 1000);
+  const parsedViewerSessionId = Number.parseInt(
+    String(req.query.viewer_session_id ?? SESSION_ID ?? ""),
+    10,
+  );
+  const viewerSessionId =
+    Number.isFinite(parsedViewerSessionId) && parsedViewerSessionId > 0
+      ? parsedViewerSessionId
+      : null;
+  const { sessionIds } = resolveSessionScope({
+    values: [req.query.session, req.query.session_id],
+    defaultSessionId: SESSION_ID,
+  });
+
+  const rows = await listConstructs({
+    dbFile: DB_FILE,
+    sessionIds,
+    viewerSessionId,
+    limit,
+  });
+
+  const constructs = rows.map(toConstructPayload);
+
+  res.json({
+    session_id:
+      Array.isArray(sessionIds) && sessionIds.length === 1
+        ? sessionIds[0]
+        : null,
+    session_ids: Array.isArray(sessionIds) ? sessionIds : null,
+    viewer_session_id: viewerSessionId,
+    limit,
+    count: constructs.length,
+    constructs,
+  });
+});
+
+app.post("/api/constructs/sync", async (req, res) => {
+  const body = req.body ?? {};
+  const limit = parseLimitedPositiveInt(
+    body.limit ?? req.query.limit,
+    1000,
+    10000,
+  );
+  const { sessionIds } = resolveSessionScope({
+    values: [
+      body.session_ids,
+      body.session,
+      body.session_id,
+      req.query.session,
+      req.query.session_id,
+    ],
+    defaultSessionId: SESSION_ID,
+  });
+
+  const syncResult = await syncConstructsFromAnnotations({
+    dbFile: DB_FILE,
+    sessionIds,
+    limit,
+  });
+
+  res.json({
+    ok: true,
+    limit,
+    inserted: syncResult.inserted,
+    scanned: syncResult.scanned,
+    session_id:
+      Array.isArray(syncResult.session_ids) &&
+      syncResult.session_ids.length === 1
+        ? syncResult.session_ids[0]
+        : null,
+    session_ids: syncResult.session_ids,
+  });
+});
+
+app.post("/api/constructs", async (req, res) => {
+  const body = req.body ?? {};
+  const label1 = cleanLabel(body.label1 ?? body.positive_label);
+  const label2 = cleanLabel(body.label2 ?? body.negative_label);
+  if (!label1 || !label2) {
+    return res.status(400).json({
+      ok: false,
+      error: "invalid-labels",
+    });
+  }
+
+  const createdFromConstructIdRaw =
+    body.created_from_construct_id ?? body.createdFromConstructId ?? null;
+  const parsedCreatedFrom = Number.parseInt(
+    String(createdFromConstructIdRaw ?? ""),
+    10,
+  );
+  const createdFromConstructId =
+    Number.isFinite(parsedCreatedFrom) && parsedCreatedFrom > 0
+      ? parsedCreatedFrom
+      : null;
+
+  const originSessionIdRaw =
+    body.origin_session_id ?? body.originSessionId ?? SESSION_ID ?? null;
+  const parsedOriginSessionId = Number.parseInt(
+    String(originSessionIdRaw ?? ""),
+    10,
+  );
+  const originSessionId =
+    Number.isFinite(parsedOriginSessionId) && parsedOriginSessionId > 0
+      ? parsedOriginSessionId
+      : null;
+
+  const requestedOriginType = String(body.origin_type ?? body.originType ?? "")
+    .trim()
+    .toLowerCase();
+  const originType =
+    requestedOriginType === "derived" ||
+    (createdFromConstructId !== null && requestedOriginType !== "manual")
+      ? "derived"
+      : "manual";
+
+  const row = await createConstruct({
+    dbFile: DB_FILE,
+    label1,
+    label2,
+    originType,
+    originSessionId,
+    createdFromConstructId,
+  });
+
+  if (!row) {
+    return res.status(400).json({
+      ok: false,
+      error: "create-failed",
+    });
+  }
+
+  return res.json({
+    ok: true,
+    construct: toConstructPayload(row),
+  });
+});
+
+app.post("/api/constructs/:id/vote", async (req, res) => {
+  const constructId = Number.parseInt(String(req.params.id ?? ""), 10);
+  if (!Number.isFinite(constructId) || constructId <= 0) {
+    return res.status(400).json({
+      ok: false,
+      error: "invalid-construct-id",
+    });
+  }
+
+  const currentSessionId = Number.parseInt(String(SESSION_ID ?? ""), 10);
+  if (!Number.isFinite(currentSessionId) || currentSessionId <= 0) {
+    return res.status(400).json({
+      ok: false,
+      error: "invalid-session-id",
+    });
+  }
+
+  const body = req.body ?? {};
+  const voteRaw = Number(body.vote_delta ?? body.vote ?? body.delta ?? 0);
+  const voteDelta = voteRaw < 0 ? -1 : 1;
+  const sourceRaw = String(body.source ?? "manual")
+    .trim()
+    .toLowerCase();
+  const source = sourceRaw === "inferred" ? "inferred" : "manual";
+  const noteRaw = body.note ?? null;
+  const note =
+    noteRaw === null || noteRaw === undefined ? null : String(noteRaw).trim();
+
+  const voteResult = await logConstructVoteEvent({
+    dbFile: DB_FILE,
+    constructId,
+    sessionId: currentSessionId,
+    voteDelta,
+    source,
+    note: note || null,
+  });
+
+  if (!voteResult) {
+    return res.status(404).json({
+      ok: false,
+      error: "construct-not-found",
+    });
+  }
+
+  return res.json({
+    ok: true,
+    construct_id: constructId,
+    session_id: currentSessionId,
+    vote_event_id: voteResult.id,
+    vote_delta: voteDelta,
+    vote_score: voteResult.score,
+  });
+});
+
+app.post("/api/constructs/:id/hide", async (req, res) => {
+  const constructId = Number.parseInt(String(req.params.id ?? ""), 10);
+  if (!Number.isFinite(constructId) || constructId <= 0) {
+    return res.status(400).json({
+      ok: false,
+      error: "invalid-construct-id",
+    });
+  }
+
+  const currentSessionId = Number.parseInt(String(SESSION_ID ?? ""), 10);
+  if (!Number.isFinite(currentSessionId) || currentSessionId <= 0) {
+    return res.status(400).json({
+      ok: false,
+      error: "invalid-session-id",
+    });
+  }
+
+  const body = req.body ?? {};
+  const sourceRaw = String(body.source ?? "manual")
+    .trim()
+    .toLowerCase();
+  const source = sourceRaw === "inferred" ? "inferred" : "manual";
+  const noteRaw = body.note ?? null;
+  const note =
+    noteRaw === null || noteRaw === undefined ? null : String(noteRaw).trim();
+
+  const eventId = await logConstructVisibilityEvent({
+    dbFile: DB_FILE,
+    constructId,
+    sessionId: currentSessionId,
+    visibility: "hidden",
+    source,
+    note: note || null,
+  });
+
+  if (!eventId) {
+    return res.status(404).json({
+      ok: false,
+      error: "construct-not-found",
+    });
+  }
+
+  return res.json({
+    ok: true,
+    construct_id: constructId,
+    session_id: currentSessionId,
+    visibility_event_id: eventId,
+    visibility: "hidden",
+  });
+});
+
+app.post("/api/constructs/:id/polarity", async (req, res) => {
+  const constructId = Number.parseInt(String(req.params.id ?? ""), 10);
+  if (!Number.isFinite(constructId) || constructId <= 0) {
+    return res.status(400).json({
+      ok: false,
+      error: "invalid-construct-id",
+    });
+  }
+
+  const body = req.body ?? {};
+  const label1Polarity = normalisePolarity(
+    body.label1_polarity ?? body.label1Polarity,
+  );
+  const label2Polarity = normalisePolarity(
+    body.label2_polarity ?? body.label2Polarity,
+  );
+  const sourceRaw = String(body.source ?? "manual")
+    .trim()
+    .toLowerCase();
+  const source = sourceRaw === "inferred" ? "inferred" : "manual";
+  const noteRaw = body.note ?? null;
+  const note =
+    noteRaw === null || noteRaw === undefined ? null : String(noteRaw).trim();
+
+  const eventId = await logConstructPolarityEvent({
+    dbFile: DB_FILE,
+    constructId,
+    label1Polarity,
+    label2Polarity,
+    source,
+    note: note || null,
+  });
+
+  if (!eventId) {
+    return res.status(404).json({
+      ok: false,
+      error: "construct-not-found",
+    });
+  }
+
+  return res.json({
+    ok: true,
+    construct_id: constructId,
+    polarity_event_id: eventId,
+    label1_polarity: label1Polarity,
+    label2_polarity: label2Polarity,
+    source,
   });
 });
 
@@ -441,6 +946,7 @@ app.get("/status/now", (_req, res) => {
   res.json({
     session_id: SESSION_ID,
     has_active_display: Boolean(CURRENT_VIEW.triad),
+    triad_id: CURRENT_VIEW.triadId,
     display_event_id: CURRENT_VIEW.displayEventId,
   });
 });
@@ -468,7 +974,7 @@ async function main() {
       if (candidates.length) {
         console.log("LAN access:");
         candidates.forEach((ip) =>
-          console.log(`  http://${ip}:${PORT}/display`)
+          console.log(`  http://${ip}:${PORT}/display`),
         );
       }
     }

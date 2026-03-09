@@ -34,7 +34,8 @@ function parseArgs(argv) {
     const arg = argv[i];
     if (arg === "--db") args.db = argv[i + 1] ?? null;
     if (arg === "--session") args.session = argv[i + 1] ?? null;
-    if (arg === "--limit") args.limit = Number.parseInt(argv[i + 1] ?? "30", 10);
+    if (arg === "--limit")
+      args.limit = Number.parseInt(argv[i + 1] ?? "30", 10);
     if (arg === "--table") args.table = (argv[i + 1] ?? "both").toLowerCase();
     if (arg === "--raw") args.raw = true;
     if (arg === "--normalized") args.normalized = true;
@@ -135,13 +136,21 @@ function buildLabelColumns(row) {
 
   const selection = row.selection ? String(row.selection) : null;
   const pairLabel = normalizeLabelCell(row.pair_label);
-  if (pairLabel !== "-" && selection && Object.prototype.hasOwnProperty.call(columns, selection)) {
+  if (
+    pairLabel !== "-" &&
+    selection &&
+    Object.prototype.hasOwnProperty.call(columns, selection)
+  ) {
     columns[selection] = pairLabel;
   }
 
   const odd = row.odd ? String(row.odd) : null;
   const oddLabel = normalizeLabelCell(row.odd_label);
-  if (oddLabel !== "-" && odd && Object.prototype.hasOwnProperty.call(columns, odd)) {
+  if (
+    oddLabel !== "-" &&
+    odd &&
+    Object.prototype.hasOwnProperty.call(columns, odd)
+  ) {
     columns[odd] = oddLabel;
   }
 
@@ -199,8 +208,14 @@ const annotationColumns = getColumns("annotation_events");
 const submissionColumns = getColumns("annotation_submissions");
 const stateHasSession = stateColumns.includes("session_id");
 const displayHasSession = displayColumns.includes("session_id");
+const displayHasTriadId = displayColumns.includes("triad_id");
 const annotationHasSession = annotationColumns.includes("session_id");
 const submissionHasSession = submissionColumns.includes("session_id");
+const submissionHasTriadId = submissionColumns.includes("triad_id");
+const submissionHasLabel1 = submissionColumns.includes("label1");
+const submissionHasLabel2 = submissionColumns.includes("label2");
+const submissionHasNotes = submissionColumns.includes("notes");
+const submissionHasPair = submissionColumns.includes("pair");
 const annotationHasLabelsJson = annotationColumns.includes("labels_json");
 
 let sessionId = null;
@@ -213,7 +228,9 @@ if (args.session !== null) {
     sessionSource = "from --session";
   }
 } else if (hasSessions) {
-  const latest = db.prepare("SELECT id FROM sessions ORDER BY id DESC LIMIT 1").get();
+  const latest = db
+    .prepare("SELECT id FROM sessions ORDER BY id DESC LIMIT 1")
+    .get();
   if (latest && Number.isFinite(Number(latest.id))) {
     sessionId = Number(latest.id);
     sessionSource = "latest from sessions";
@@ -227,7 +244,10 @@ if (sessionId === null) {
         "SELECT session_id FROM state_events WHERE session_id IS NOT NULL ORDER BY id DESC LIMIT 1",
       )
       .get();
-    if (latestState?.session_id !== undefined && latestState?.session_id !== null) {
+    if (
+      latestState?.session_id !== undefined &&
+      latestState?.session_id !== null
+    ) {
       sessionId = Number(latestState.session_id);
       sessionSource = "latest from state_events";
     }
@@ -238,7 +258,10 @@ if (sessionId === null) {
         "SELECT session_id FROM display_events WHERE session_id IS NOT NULL ORDER BY id DESC LIMIT 1",
       )
       .get();
-    if (latestDisplay?.session_id !== undefined && latestDisplay?.session_id !== null) {
+    if (
+      latestDisplay?.session_id !== undefined &&
+      latestDisplay?.session_id !== null
+    ) {
       sessionId = Number(latestDisplay.session_id);
       sessionSource = "latest from display_events";
     }
@@ -306,7 +329,9 @@ if (args.table === "state" || args.table === "both") {
 
     process.stdout.write("STATE_EVENTS\n");
     if (sessionId !== null && !stateHasSession) {
-      process.stdout.write("  note: session_id column missing; showing unscoped rows\n");
+      process.stdout.write(
+        "  note: session_id column missing; showing unscoped rows\n",
+      );
     }
     process.stdout.write(`  ${rowCountLabel(rows.length)}\n`);
     if (!rows.length) {
@@ -317,7 +342,9 @@ if (args.table === "state" || args.table === "both") {
         const state = safeParseJson(row.state_json, {});
         const warnings = safeParseJson(row.warnings_json, []);
         const triad = fmtTriad(state?.triad);
-        const selectedPair = state?.selectedPair ? String(state.selectedPair) : "-";
+        const selectedPair = state?.selectedPair
+          ? String(state.selectedPair)
+          : "-";
         const reason = row.reason ? String(row.reason) : "-";
         const warningCount = Array.isArray(warnings) ? warnings.length : 0;
         process.stdout.write(
@@ -340,9 +367,10 @@ if (args.table === "display" || args.table === "both") {
   } else {
     const canFilterSession = sessionId !== null && displayHasSession;
     const where = canFilterSession ? "WHERE session_id = @session_id" : "";
+    const triadIdExpr = displayHasTriadId ? "triad_id" : "NULL AS triad_id";
     const rows = db
       .prepare(
-        `SELECT id, ts, session_id, triad_a, triad_b, triad_c, selection, reason, state_event_id
+        `SELECT id, ts, session_id, ${triadIdExpr}, triad_a, triad_b, triad_c, selection, reason, state_event_id
          FROM display_events
          ${where}
          ORDER BY id DESC
@@ -365,15 +393,23 @@ if (args.table === "display" || args.table === "both") {
     } else {
       printedAnything = true;
       for (const row of rows) {
-        const triad = fmtTriadFromColumns(row.triad_a, row.triad_b, row.triad_c);
+        const triad = fmtTriadFromColumns(
+          row.triad_a,
+          row.triad_b,
+          row.triad_c,
+        );
         const selection = row.selection ? String(row.selection) : "-";
         const reason = row.reason ? String(row.reason) : "-";
         const stateEventId =
           row.state_event_id !== null && row.state_event_id !== undefined
             ? String(row.state_event_id)
             : "-";
+        const triadId =
+          row.triad_id !== null && row.triad_id !== undefined
+            ? String(row.triad_id)
+            : "-";
         process.stdout.write(
-          `  #${row.id} ${fmtTs(row.ts)} ${padLabel(reason)} triad=${triad} pair=${selection} state_event_id=${stateEventId}\n`,
+          `  #${row.id} ${fmtTs(row.ts)} ${padLabel(reason)} triad=${triad} triad_id=${triadId} pair=${selection} state_event_id=${stateEventId}\n`,
         );
       }
       process.stdout.write("\n");
@@ -388,7 +424,9 @@ if (args.table === "annotation" || args.table === "both") {
   } else {
     const canFilterSession = sessionId !== null && annotationHasSession;
     const where = canFilterSession ? "WHERE session_id = @session_id" : "";
-    const labelsExpr = annotationHasLabelsJson ? "labels_json" : "NULL AS labels_json";
+    const labelsExpr = annotationHasLabelsJson
+      ? "labels_json"
+      : "NULL AS labels_json";
     const rows = db
       .prepare(
         `SELECT id, ts, session_id, selection, pair_label, odd, odd_label, triad_json, ${labelsExpr}, errors_json, raw_input_json
@@ -404,7 +442,9 @@ if (args.table === "annotation" || args.table === "both") {
 
     process.stdout.write("ANNOTATION_EVENTS\n");
     if (sessionId !== null && !annotationHasSession) {
-      process.stdout.write("  note: session_id column missing; showing unscoped rows\n");
+      process.stdout.write(
+        "  note: session_id column missing; showing unscoped rows\n",
+      );
     }
     process.stdout.write(`  ${rowCountLabel(rows.length)}\n`);
     if (!rows.length) {
@@ -444,9 +484,15 @@ if (args.table === "submission" || args.table === "both") {
   } else {
     const canFilterSession = sessionId !== null && submissionHasSession;
     const where = canFilterSession ? "WHERE session_id = @session_id" : "";
+    const triadIdExpr = submissionHasTriadId ? "triad_id" : "NULL AS triad_id";
+    const label1Expr = submissionHasLabel1 ? "label1" : "NULL AS label1";
+    const label2Expr = submissionHasLabel2 ? "label2" : "NULL AS label2";
+    const notesExpr = submissionHasNotes ? "notes" : "NULL AS notes";
+    const pairExpr = submissionHasPair ? "pair" : "NULL AS pair";
     const rows = db
       .prepare(
-        `SELECT id, submitted_at, input_started_at, display_event_id, submission_mode, triad_a, triad_b, triad_c, selection, odd,
+        `SELECT id, submitted_at, input_started_at, display_event_id, submission_mode, ${triadIdExpr}, triad_a, triad_b, triad_c, selection, odd,
+                ${label1Expr}, ${label2Expr}, ${notesExpr}, ${pairExpr},
                 pair_label, odd_label, a_label, b_label, c_label, ab_label, ac_label, bc_label, link_status, link_note, errors_json, raw_input_json
          FROM annotation_submissions
          ${where}
@@ -470,7 +516,11 @@ if (args.table === "submission" || args.table === "both") {
     } else {
       printedAnything = true;
       for (const row of rows) {
-        const triad = fmtTriadFromColumns(row.triad_a, row.triad_b, row.triad_c);
+        const triad = fmtTriadFromColumns(
+          row.triad_a,
+          row.triad_b,
+          row.triad_c,
+        );
         const errors = safeParseJson(row.errors_json, []);
         const errorCount = Array.isArray(errors) ? errors.length : 0;
         const displayEventId =
@@ -478,18 +528,24 @@ if (args.table === "submission" || args.table === "both") {
             ? String(row.display_event_id)
             : "-";
         const linkNote = row.link_note ? String(row.link_note) : "-";
+        const triadId =
+          row.triad_id !== null && row.triad_id !== undefined
+            ? String(row.triad_id)
+            : "-";
+        const notes = normalizeLabelCell(row.notes);
         process.stdout.write(
-          `  #${row.id} ${fmtTs(row.submitted_at)} mode=${row.submission_mode} triad=${triad} sel=${row.selection || "-"} odd=${row.odd || "-"} a="${normalizeLabelCell(row.a_label)}" b="${normalizeLabelCell(row.b_label)}" c="${normalizeLabelCell(row.c_label)}" ab="${normalizeLabelCell(row.ab_label)}" ac="${normalizeLabelCell(row.ac_label)}" bc="${normalizeLabelCell(row.bc_label)}" pair="${normalizeLabelCell(row.pair_label)}" odd_label="${normalizeLabelCell(row.odd_label)}" link=${row.link_status || "-"} link_note=${linkNote} display_event_id=${displayEventId} errors=${errorCount}\n`,
+          `  #${row.id} ${fmtTs(row.submitted_at)} mode=${row.submission_mode} triad=${triad} triad_id=${triadId} sel=${row.selection || "-"} pair=${row.pair || "-"} odd=${row.odd || "-"} label1="${normalizeLabelCell(row.label1)}" label2="${normalizeLabelCell(row.label2)}" notes="${notes}" a="${normalizeLabelCell(row.a_label)}" b="${normalizeLabelCell(row.b_label)}" c="${normalizeLabelCell(row.c_label)}" ab="${normalizeLabelCell(row.ab_label)}" ac="${normalizeLabelCell(row.ac_label)}" bc="${normalizeLabelCell(row.bc_label)}" pair_label="${normalizeLabelCell(row.pair_label)}" odd_label="${normalizeLabelCell(row.odd_label)}" link=${row.link_status || "-"} link_note=${linkNote} display_event_id=${displayEventId} errors=${errorCount}\n`,
         );
         if (args.normalized) {
           process.stdout.write(
-            `    normalized(${LABEL_NORMALIZATION_VERSION}): a="${normalizeLabelCellForAnalysis(row.a_label)}" b="${normalizeLabelCellForAnalysis(row.b_label)}" c="${normalizeLabelCellForAnalysis(row.c_label)}" ab="${normalizeLabelCellForAnalysis(row.ab_label)}" ac="${normalizeLabelCellForAnalysis(row.ac_label)}" bc="${normalizeLabelCellForAnalysis(row.bc_label)}" pair="${normalizeLabelCellForAnalysis(row.pair_label)}" odd_label="${normalizeLabelCellForAnalysis(row.odd_label)}"\n`,
+            `    normalized(${LABEL_NORMALIZATION_VERSION}): label1="${normalizeLabelCellForAnalysis(row.label1)}" label2="${normalizeLabelCellForAnalysis(row.label2)}" a="${normalizeLabelCellForAnalysis(row.a_label)}" b="${normalizeLabelCellForAnalysis(row.b_label)}" c="${normalizeLabelCellForAnalysis(row.c_label)}" ab="${normalizeLabelCellForAnalysis(row.ab_label)}" ac="${normalizeLabelCellForAnalysis(row.ac_label)}" bc="${normalizeLabelCellForAnalysis(row.bc_label)}" pair_label="${normalizeLabelCellForAnalysis(row.pair_label)}" odd_label="${normalizeLabelCellForAnalysis(row.odd_label)}"\n`,
           );
         }
         if (args.raw) {
           process.stdout.write(
             `    input_started_at: ${row.input_started_at || "-"}\n`,
           );
+          process.stdout.write(`    notes: ${row.notes || "-"}\n`);
           process.stdout.write(`    link_note: ${row.link_note || "-"}\n`);
           process.stdout.write(`    errors_json: ${row.errors_json}\n`);
           process.stdout.write(`    raw_input_json: ${row.raw_input_json}\n`);

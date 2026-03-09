@@ -100,6 +100,14 @@ const tableExists = (name) => {
   return Boolean(row?.name);
 };
 
+const getColumns = (name) => {
+  if (!tableExists(name)) return [];
+  return db
+    .prepare(`PRAGMA table_info(${name})`)
+    .all()
+    .map((row) => String(row.name));
+};
+
 let rows = [];
 let header = [];
 
@@ -131,6 +139,21 @@ if (args.table === "state") {
     console.error("Table not found: annotation_submissions");
     process.exit(1);
   }
+  const submissionColumns = getColumns("annotation_submissions");
+  const triadIdExpr = submissionColumns.includes("triad_id")
+    ? "triad_id"
+    : "NULL AS triad_id";
+  const label1Expr = submissionColumns.includes("label1")
+    ? "label1"
+    : "NULL AS label1";
+  const label2Expr = submissionColumns.includes("label2")
+    ? "label2"
+    : "NULL AS label2";
+  const notesExpr = submissionColumns.includes("notes")
+    ? "notes"
+    : "NULL AS notes";
+  const pairExpr = submissionColumns.includes("pair") ? "pair" : "NULL AS pair";
+
   header = [
     "id",
     "submitted_at",
@@ -138,11 +161,16 @@ if (args.table === "state") {
     "session_id",
     "submission_mode",
     "display_event_id",
+    "triad_id",
     "triad_a",
     "triad_b",
     "triad_c",
     "selection",
+    "pair",
     "odd",
+    "label1",
+    "label2",
+    "notes",
     "pair_label",
     "odd_label",
     "a_label",
@@ -159,8 +187,8 @@ if (args.table === "state") {
   ];
   rows = db
     .prepare(
-      `SELECT id, submitted_at, input_started_at, session_id, submission_mode, display_event_id,
-              triad_a, triad_b, triad_c, selection, odd, pair_label, odd_label,
+      `SELECT id, submitted_at, input_started_at, session_id, submission_mode, display_event_id, ${triadIdExpr},
+              triad_a, triad_b, triad_c, selection, ${pairExpr}, odd, ${label1Expr}, ${label2Expr}, ${notesExpr}, pair_label, odd_label,
               a_label, b_label, c_label, ab_label, ac_label, bc_label,
               link_status, link_note, source, raw_input_json, errors_json
        FROM annotation_submissions
@@ -171,6 +199,8 @@ if (args.table === "state") {
   if (args.normalized) {
     rows = rows.map((row) => ({
       ...row,
+      label1_norm: normalizeValue(row.label1),
+      label2_norm: normalizeValue(row.label2),
       pair_label_norm: normalizeValue(row.pair_label),
       odd_label_norm: normalizeValue(row.odd_label),
       a_label_norm: normalizeValue(row.a_label),
@@ -183,6 +213,8 @@ if (args.table === "state") {
     }));
     header = [
       ...header,
+      "label1_norm",
+      "label2_norm",
       "pair_label_norm",
       "odd_label_norm",
       "a_label_norm",

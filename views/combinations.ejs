@@ -5,7 +5,7 @@
   showChrome: false
 }) %>
 
-<div class="view triad-annotations-view">
+<div class="view triad-view">
   <% const ids = state?.triad ?? { a: "", b: "", c: "" }; %>
   <% const imgs = triadImages ?? { a: null, b: null, c: null }; %>
 
@@ -35,7 +35,13 @@
   <% } %>
 
   <% if (!showForm) { %>
-  <section class="triad-stage" data-triad-a="<%= ids.a %>" data-triad-b="<%= ids.b %>" data-triad-c="<%= ids.c %>">
+  <section
+    class="triad-stage"
+    data-display-stage
+    data-triad-a="<%= ids.a %>"
+    data-triad-b="<%= ids.b %>"
+    data-triad-c="<%= ids.c %>"
+  >
     <div class="triad-grid">
       <div class="triad-left">
         <div class="triad-slot triad-slot-a">
@@ -43,11 +49,15 @@
             <div class="triad-label">A</div>
             <div class="annotation-tag annotation-tag-pair"></div>
             <div class="annotation-tag annotation-tag-odd"></div>
-            <% if (imgs.a) { %>
-              <img src="<%= imgs.a %>" alt="Triad A" />
-            <% } else { %>
-              <div class="image-missing">Missing image (<%= ids.a || "empty" %>)</div>
-            <% } %>
+            <img
+              src="<%= imgs.a || '' %>"
+              alt="Triad A"
+              data-triad-image="a"
+              <%= imgs.a ? "" : "hidden" %>
+            />
+            <div class="image-missing" data-triad-missing="a" <%= imgs.a ? "hidden" : "" %>>
+              Missing image (<span data-triad-image-id="a"><%= ids.a || "empty" %></span>)
+            </div>
           </div>
         </div>
         <div class="triad-slot triad-slot-c">
@@ -55,54 +65,112 @@
             <div class="triad-label">C</div>
             <div class="annotation-tag annotation-tag-pair"></div>
             <div class="annotation-tag annotation-tag-odd"></div>
-            <% if (imgs.c) { %>
-              <img src="<%= imgs.c %>" alt="Triad C" />
-            <% } else { %>
-              <div class="image-missing">Missing image (<%= ids.c || "empty" %>)</div>
-            <% } %>
+            <img
+              src="<%= imgs.c || '' %>"
+              alt="Triad C"
+              data-triad-image="c"
+              <%= imgs.c ? "" : "hidden" %>
+            />
+            <div class="image-missing" data-triad-missing="c" <%= imgs.c ? "hidden" : "" %>>
+              Missing image (<span data-triad-image-id="c"><%= ids.c || "empty" %></span>)
+            </div>
           </div>
         </div>
       </div>
       <div class="triad-right">
+        <div class="triad-slot triad-slot-spacer" aria-hidden="true"></div>
         <div class="triad-slot triad-slot-b">
           <div class="triad-card card-b" data-triad="b">
             <div class="triad-label">B</div>
             <div class="annotation-tag annotation-tag-pair"></div>
             <div class="annotation-tag annotation-tag-odd"></div>
-            <% if (imgs.b) { %>
-              <img src="<%= imgs.b %>" alt="Triad B" />
-            <% } else { %>
-              <div class="image-missing">Missing image (<%= ids.b || "empty" %>)</div>
-            <% } %>
+            <img
+              src="<%= imgs.b || '' %>"
+              alt="Triad B"
+              data-triad-image="b"
+              <%= imgs.b ? "" : "hidden" %>
+            />
+            <div class="image-missing" data-triad-missing="b" <%= imgs.b ? "hidden" : "" %>>
+              Missing image (<span data-triad-image-id="b"><%= ids.b || "empty" %></span>)
+            </div>
           </div>
         </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="annotations-panel">
-    <div class="annotations-row">
-      <ul class="annotation-list" data-combo="true">
-        <% const combos = [
-          { pair: "ab", odd: "c" },
-          { pair: "ac", odd: "b" },
-          { pair: "bc", odd: "a" },
-        ]; %>
-        <% combos.forEach((combo) => { %>
-          <li class="annotation-item"
-              data-annotation="true"
-              data-pair="<%= combo.pair %>"
-              data-odd="<%= combo.odd %>">
-            <div class="annotation-diagram pair-<%= combo.pair %> odd-<%= combo.odd %>">
-              <div class="diag-sq pos-a <%= combo.pair.includes("a") ? "is-pair" : "is-odd" %>"></div>
-              <div class="diag-sq pos-b <%= combo.pair.includes("b") ? "is-pair" : "is-odd" %>"></div>
-              <div class="diag-sq pos-c <%= combo.pair.includes("c") ? "is-pair" : "is-odd" %>"></div>
+        <div class="triad-slot triad-slot-spacer triad-slot-nav">
+          <div class="display-sequence-shell">
+            <div class="annotate-sequence-nav display-sequence-nav" data-sequence-controls>
+              <button
+                type="button"
+                class="annotate-corner-nav"
+                data-seq-back
+                aria-label="Previous display state"
+                title="Previous display state"
+              >
+                ◀
+              </button>
+              <button
+                type="button"
+                class="annotate-sequence-button"
+                data-seq-step="none"
+                aria-label="Clear highlight"
+                title="No highlight"
+              >
+                <span class="annotate-mini-diagram state-none">
+                  <span class="mini-bar bar-a"></span>
+                  <span class="mini-bar bar-b"></span>
+                  <span class="mini-bar bar-c"></span>
+                </span>
+              </button>
+              <button
+                type="button"
+                class="annotate-sequence-button"
+                data-seq-step="ab"
+                aria-label="Highlight AB pair"
+                title="AB | C"
+              >
+                <span class="annotate-mini-diagram state-ab">
+                  <span class="mini-bar bar-a"></span>
+                  <span class="mini-bar bar-b"></span>
+                  <span class="mini-bar bar-c"></span>
+                </span>
+              </button>
+              <button
+                type="button"
+                class="annotate-sequence-button"
+                data-seq-step="ac"
+                aria-label="Highlight AC pair"
+                title="AC | B"
+              >
+                <span class="annotate-mini-diagram state-ac">
+                  <span class="mini-bar bar-a"></span>
+                  <span class="mini-bar bar-b"></span>
+                  <span class="mini-bar bar-c"></span>
+                </span>
+              </button>
+              <button
+                type="button"
+                class="annotate-sequence-button"
+                data-seq-step="bc"
+                aria-label="Highlight BC pair"
+                title="BC | A"
+              >
+                <span class="annotate-mini-diagram state-bc">
+                  <span class="mini-bar bar-a"></span>
+                  <span class="mini-bar bar-b"></span>
+                  <span class="mini-bar bar-c"></span>
+                </span>
+              </button>
+              <button
+                type="button"
+                class="annotate-corner-nav"
+                data-seq-forward
+                aria-label="Next display state"
+                title="Next display state"
+              >
+                ▶
+              </button>
             </div>
-          </li>
-        <% }) %>
-      </ul>
-      <div class="combo-actions">
-        <a class="combo-next" href="/display">Next triad</a>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -113,8 +181,11 @@
   <script>
     window.__COMBO_LOG = {
       url: "/display/log",
+      historyUrl: "/display/history",
+      nextTriadUrl: "/display",
       sessionId: "<%= sessionId %>",
-      triad: { a: "<%= ids.a %>", b: "<%= ids.b %>", c: "<%= ids.c %>" }
+      triad: { a: "<%= ids.a %>", b: "<%= ids.b %>", c: "<%= ids.c %>" },
+      initialSelection: null
     };
   </script>
 <% } %>
