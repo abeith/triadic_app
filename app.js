@@ -54,6 +54,7 @@ const { resolveTriadImages } = await optionalImport(
 );
 
 const {
+  closeAllDbs,
   initDb,
   logStateEvent,
   logAnnotationEvent,
@@ -72,6 +73,10 @@ const {
   "./lib/db.js",
   "Missing ./lib/db.js. Create it per README.md / proposal.",
 );
+const { createDbSnapshot } = await optionalImport(
+  "./lib/db-snapshots.js",
+  "Missing ./lib/db-snapshots.js.",
+);
 
 // --- Configuration -----------------------------------------------------------
 const PORT = Number.parseInt(process.env.PORT ?? "3000", 10);
@@ -87,6 +92,8 @@ let CURRENT_VIEW = {
   selection: null,
   displayEventId: null,
 };
+let server = null;
+let shutdownStarted = false;
 
 // --- Express setup -----------------------------------------------------------
 const app = express();
@@ -951,14 +958,76 @@ app.get("/status/now", (_req, res) => {
   });
 });
 
+function logSnapshotResult(label, snapshot) {
+  if (!snapshot?.path) return;
+  const copiedFiles = [snapshot.path, ...(snapshot.sidecars ?? [])];
+  console.log(`${label}: ${copiedFiles.join(", ")}`);
+}
+
+function closeServerInstance() {
+  if (!server) return Promise.resolve();
+  return new Promise((resolve) => {
+    server.close(() => {
+      server = null;
+      resolve();
+    });
+  });
+}
+
+async function shutdown(signal) {
+  if (shutdownStarted) return;
+  shutdownStarted = true;
+
+  console.log(`Received ${signal}; shutting down.`);
+
+  try {
+    await closeServerInstance();
+  } catch (err) {
+    console.error("[shutdown] failed to close server:", err);
+  }
+
+  try {
+    closeAllDbs();
+  } catch (err) {
+    console.error("[shutdown] failed to close DB connections:", err);
+  }
+
+  try {
+    const snapshot = createDbSnapshot({
+      dbFile: DB_FILE,
+      reason: "post-session",
+      sessionId: SESSION_ID,
+    });
+    logSnapshotResult("Post-session snapshot", snapshot);
+  } catch (err) {
+    console.error("[shutdown] failed to create DB snapshot:", err);
+  }
+
+  process.exit(0);
+}
+
+process.once("SIGINT", () => {
+  void shutdown("SIGINT");
+});
+
+process.once("SIGTERM", () => {
+  void shutdown("SIGTERM");
+});
+
 // --- Startup ----------------------------------------------------------------
 async function main() {
   fs.mkdirSync(path.dirname(DB_FILE), { recursive: true });
+  const preSessionSnapshot = createDbSnapshot({
+    dbFile: DB_FILE,
+    reason: "pre-session",
+  });
+  logSnapshotResult("Pre-session snapshot", preSessionSnapshot);
+
   await initDb(DB_FILE);
   SESSION_ID = await createSession(DB_FILE);
   if (SESSION_ID !== null) console.log(`Session ID: ${SESSION_ID}`);
 
-  app.listen(PORT, HOST, () => {
+  server = app.listen(PORT, HOST, () => {
     console.log(`Triadic app listening on http://${HOST}:${PORT}/display`);
     if (HOST === "0.0.0.0" || HOST === "::") {
       const nets = os.networkInterfaces();

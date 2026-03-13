@@ -42,10 +42,12 @@ Image IDs are resolved against `public/images/`. The resolver accepts integers (
 ## Session IDs
 
 Each `npm start` creates a new integer `session_id` (logged on startup). The ID is attached to all logged events for that server run.
+If the configured DB file already exists, startup creates a timestamped pre-session snapshot in a sibling `snapshots/` directory before opening the live database.
 
 ## Logging & data
 
 - SQLite DB: `data/experiment.db` (configurable).
+- SQLite snapshots: `data/snapshots/` by default, named from the live DB filename plus a timestamp and lifecycle marker.
 - Event tables: `state_events`, `display_events`, and `annotation_submissions` (`annotation_events` remains as legacy/compatibility logging).
 - `triads` stores canonical triad image references and is linked from `display_events.triad_id` and `annotation_submissions.triad_id`.
 - Streamlined annotation submissions store neutral fields `label1`, `label2`, optional `notes`, and optional `pair` (`ab|ac|bc|null`) while still retaining legacy label columns for compatibility.
@@ -58,6 +60,8 @@ Each `npm start` creates a new integer `session_id` (logged on startup). The ID 
 - `POST /api/constructs/:id/polarity` appends a polarity event (`label1_polarity`, `label2_polarity`, optional `source` and `note`) without mutating existing construct rows.
 - `state_events.reason` currently uses `combination-view` (display interactions) and `invalid-form` (bad/missing image IDs).
 - The full payload is stored in JSON columns as a fail-safe.
+- The app uses SQLite rollback journalling (`journal_mode=DELETE`, `synchronous=FULL`) so the live dataset remains centred on the configured DB file; on orderly shutdown it also writes a post-session snapshot after closing the DB connection.
+- If SQLite companion files such as `-journal`, `-wal`, or `-shm` are present when a snapshot is taken, they are copied alongside the snapshot for recovery completeness.
 
 ## Scripts
 
