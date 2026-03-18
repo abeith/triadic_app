@@ -116,21 +116,21 @@
       const card = elements.cards[key];
       if (!card) return;
       card.classList.add("is-pair");
-      const tag = card.querySelector(".annotation-tag-pair");
-      if (tag) {
-        tag.textContent = "PAIR";
-        tag.classList.add("is-visible");
-      }
+      // const tag = card.querySelector(".annotation-tag-pair");
+      // if (tag) {
+      //   tag.textContent = "PAIR";
+      //   tag.classList.add("is-visible");
+      // }
     });
 
     const odd = selectionToOdd(selection);
     if (odd && elements.cards[odd]) {
       elements.cards[odd].classList.add("is-odd");
-      const tag = elements.cards[odd].querySelector(".annotation-tag-odd");
-      if (tag) {
-        tag.textContent = "ODD";
-        tag.classList.add("is-visible");
-      }
+      // const tag = elements.cards[odd].querySelector(".annotation-tag-odd");
+      // if (tag) {
+      //   tag.textContent = "ODD";
+      //   tag.classList.add("is-visible");
+      // }
     }
   };
 
